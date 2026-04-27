@@ -7,7 +7,7 @@ import java.util.UUID;
 @Component
 public class PrefixIdGenerator {
     public String userId() {
-        return "usr" + generateId();
+        return "usr-" + generateId();
     }
 
     public String generateId() {
