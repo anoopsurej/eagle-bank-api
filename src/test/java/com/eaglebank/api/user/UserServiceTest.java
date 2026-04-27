@@ -1,5 +1,7 @@
 package com.eaglebank.api.user;
 
+import com.eaglebank.api.account.AccountRepository;
+import com.eaglebank.api.common.error.ConflictException;
 import com.eaglebank.api.common.error.ForbiddenException;
 import com.eaglebank.api.common.error.NotFoundException;
 import com.eaglebank.api.common.id.PrefixIdGenerator;
@@ -28,6 +30,7 @@ class UserServiceTest {
     @Mock PrefixIdGenerator idGenerator;
     @Mock PasswordEncoder passwordEncoder;
     @InjectMocks UserService userService;
+    @Mock AccountRepository accountRepository;
 
     private static final AddressDto ADDRESS = new AddressDto(
             "1 Main Street", null, null, "London", "Greater London", "SW1A 1AA");
@@ -118,9 +121,20 @@ class UserServiceTest {
     void deleteUser_owner_deletesEntity() {
         User user = entityWithId("usr-abc123");
         when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
+        when(accountRepository.existsByUserId("usr-abc123")).thenReturn(false);
 
         userService.deleteUser("usr-abc123", "usr-abc123");
 
         verify(userRepository).delete(user);
+    }
+
+    @Test
+    void deleteUser_owner_withActiveAccounts_throws409() {
+        User user = entityWithId("usr-abc123");
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
+        when(accountRepository.existsByUserId("usr-abc123")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.deleteUser("usr-abc123", "usr-abc123"))
+                .isInstanceOf(ConflictException.class);
     }
 }

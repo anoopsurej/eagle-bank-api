@@ -1,5 +1,6 @@
 package com.eaglebank.api.user;
 
+import com.eaglebank.api.account.AccountRepository;
 import com.eaglebank.api.common.error.ConflictException;
 import com.eaglebank.api.common.error.ForbiddenException;
 import com.eaglebank.api.common.error.NotFoundException;
@@ -16,6 +17,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final PrefixIdGenerator idGenerator;
+    private final AccountRepository accountRepository;
 
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.findByEmail(request.email()).isPresent()) {
@@ -40,6 +42,9 @@ public class UserService {
 
     public void deleteUser(String userId, String authenticatedUserId) {
         User user = findAndAuthorize(userId, authenticatedUserId);
+        if (accountRepository.existsByUserId(userId)) {
+            throw new ConflictException("User cannot be deleted while they have active accounts");
+        }
         userRepository.delete(user);
     }
 
