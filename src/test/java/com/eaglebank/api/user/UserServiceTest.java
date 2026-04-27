@@ -1,5 +1,7 @@
 package com.eaglebank.api.user;
 
+import com.eaglebank.api.common.error.ForbiddenException;
+import com.eaglebank.api.common.error.NotFoundException;
 import com.eaglebank.api.common.id.PrefixIdGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,10 +35,15 @@ class UserServiceTest {
     private static final CreateUserRequest REQUEST = new CreateUserRequest(
             "Test User", ADDRESS, "+441234567890", "test@example.com", "password123");
 
+    private User entityWithId(String id) {
+        User e = new User();
+        e.setId(id);
+        return e;
+    }
+
     @Test
     void createUser_duplicateEmail_throwsConflict() {
-        when(userRepository.findByEmail("test@example.com"))
-                .thenReturn(Optional.of(new User()));
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(new User()));
 
         assertThatThrownBy(() -> userService.createUser(REQUEST))
                 .isInstanceOf(Exception.class)
@@ -44,22 +52,75 @@ class UserServiceTest {
 
     @Test
     void createUser_newUser_savesAndReturnsResponse() {
-        User savedEntity = new User();
-        UserResponse expectedResponse = new UserResponse(
-                "usr-abc123", "Test User", ADDRESS,
-                "+441234567890", "test@example.com",
-                Instant.now(), Instant.now());
+        User savedUser = entityWithId("usr-abc123");
+        UserResponse expectedResponse = new UserResponse("usr-abc123", "Test User", ADDRESS,
+                "+441234567890", "test@example.com", Instant.now(), Instant.now());
 
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(idGenerator.userId()).thenReturn("usr-abc123");
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
-        when(userMapper.toUser(any(), anyString(), anyString())).thenReturn(savedEntity);
-        when(userRepository.save(any())).thenReturn(savedEntity);
+        when(userMapper.toUser(any(), anyString(), anyString())).thenReturn(savedUser);
+        when(userRepository.save(any())).thenReturn(savedUser);
         when(userMapper.toResponse(any())).thenReturn(expectedResponse);
 
         UserResponse result = userService.createUser(REQUEST);
-
         assertThat(result.id()).isEqualTo("usr-abc123");
         assertThat(result.email()).isEqualTo("test@example.com");
+    }
+
+
+    @Test
+    void fetchUser_notFound_throws404() {
+        when(userRepository.findById("usr-gone")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.fetchUser("usr-gone", "usr-gone"))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void fetchUser_differentOwner_throws403() {
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(entityWithId("usr-abc123")));
+
+        assertThatThrownBy(() -> userService.fetchUser("usr-abc123", "usr-other"))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void fetchUser_owner_returnsResponse() {
+        User user = entityWithId("usr-abc123");
+        UserResponse expected = new UserResponse("usr-abc123", "Test User", ADDRESS,
+                "+441234567890", "test@example.com", Instant.now(), Instant.now());
+
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
+        when(userMapper.toResponse(user)).thenReturn(expected);
+
+        assertThat(userService.fetchUser("usr-abc123", "usr-abc123").id()).isEqualTo("usr-abc123");
+    }
+
+
+    @Test
+    void deleteUser_notFound_throws404() {
+        when(userRepository.findById("usr-gone")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.deleteUser("usr-gone", "usr-gone"))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void deleteUser_differentOwner_throws403() {
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(entityWithId("usr-abc123")));
+
+        assertThatThrownBy(() -> userService.deleteUser("usr-abc123", "usr-other"))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void deleteUser_owner_deletesEntity() {
+        User user = entityWithId("usr-abc123");
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
+
+        userService.deleteUser("usr-abc123", "usr-abc123");
+
+        verify(userRepository).delete(user);
     }
 }

@@ -29,6 +29,23 @@ public class UserMapper {
         return user;
     }
 
+    public void updateUser(User user, UpdateUserRequest request) {
+        if (request.name() != null) user.setName(request.name());
+        if (request.phoneNumber() != null) user.setPhoneNumber(request.phoneNumber());
+        if (request.email() != null) user.setEmail(request.email());
+        if (request.address() != null) {
+            Address address = user.getAddress();
+            address.setLine1(request.address().line1());
+            address.setLine2(request.address().line2());
+            address.setLine3(request.address().line3());
+            address.setTown(request.address().town());
+            address.setCounty(request.address().county());
+            address.setPostcode(request.address().postcode());
+        }
+        user.setUpdatedTimestamp(java.time.Instant.now());
+    }
+
+
     public UserResponse toResponse(User user) {
         AddressDto address = new AddressDto(
                 user.getAddress().getLine1(),
