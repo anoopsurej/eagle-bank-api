@@ -38,7 +38,7 @@ class UserServiceTest {
     private static final CreateUserRequest REQUEST = new CreateUserRequest(
             "Test User", ADDRESS, "+441234567890", "test@example.com", "password123");
 
-    private User entityWithId(String id) {
+    private User userWithId(String id) {
         User e = new User();
         e.setId(id);
         return e;
@@ -55,7 +55,7 @@ class UserServiceTest {
 
     @Test
     void createUser_newUser_savesAndReturnsResponse() {
-        User savedUser = entityWithId("usr-abc123");
+        User savedUser = userWithId("usr-abc123");
         UserResponse expectedResponse = new UserResponse("usr-abc123", "Test User", ADDRESS,
                 "+441234567890", "test@example.com", Instant.now(), Instant.now());
 
@@ -82,7 +82,7 @@ class UserServiceTest {
 
     @Test
     void fetchUser_differentOwner_throws403() {
-        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(entityWithId("usr-abc123")));
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(userWithId("usr-abc123")));
 
         assertThatThrownBy(() -> userService.fetchUser("usr-abc123", "usr-other"))
                 .isInstanceOf(ForbiddenException.class);
@@ -90,7 +90,7 @@ class UserServiceTest {
 
     @Test
     void fetchUser_owner_returnsResponse() {
-        User user = entityWithId("usr-abc123");
+        User user = userWithId("usr-abc123");
         UserResponse expected = new UserResponse("usr-abc123", "Test User", ADDRESS,
                 "+441234567890", "test@example.com", Instant.now(), Instant.now());
 
@@ -111,7 +111,7 @@ class UserServiceTest {
 
     @Test
     void deleteUser_differentOwner_throws403() {
-        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(entityWithId("usr-abc123")));
+        when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(userWithId("usr-abc123")));
 
         assertThatThrownBy(() -> userService.deleteUser("usr-abc123", "usr-other"))
                 .isInstanceOf(ForbiddenException.class);
@@ -119,7 +119,7 @@ class UserServiceTest {
 
     @Test
     void deleteUser_owner_deletesEntity() {
-        User user = entityWithId("usr-abc123");
+        User user = userWithId("usr-abc123");
         when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
         when(accountRepository.existsByUserId("usr-abc123")).thenReturn(false);
 
@@ -130,7 +130,7 @@ class UserServiceTest {
 
     @Test
     void deleteUser_owner_withActiveAccounts_throws409() {
-        User user = entityWithId("usr-abc123");
+        User user = userWithId("usr-abc123");
         when(userRepository.findById("usr-abc123")).thenReturn(Optional.of(user));
         when(accountRepository.existsByUserId("usr-abc123")).thenReturn(true);
 

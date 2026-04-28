@@ -16,6 +16,10 @@ public class PrefixIdGenerator {
         return String.format("01%06d", suffix);
     }
 
+    public String transactionId() {
+        return "tan-" + generateId();
+    }
+
     public String generateId() {
         return UUID.randomUUID().toString().replace("-","");
     }
