@@ -1,7 +1,5 @@
 package com.eaglebank.api.user;
 
-import com.eaglebank.api.user.AddressDto;
-
 import java.time.Instant;
 
 public record UserResponse(
